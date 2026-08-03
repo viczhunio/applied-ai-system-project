@@ -1,19 +1,42 @@
 id,title,artist,genre,mood,energy,tempo_bpm,valence,danceability,acousticness,instrumentalness,popularity
-1,Sunrise City,Neon Echo,pop,happy,0.82,118,0.84,0.79,0.18,0.02,78
-2,Midnight Coding,LoRoom,lofi,chill,0.42,78,0.56,0.62,0.71,0.85,55
-3,Storm Runner,Voltline,rock,intense,0.91,152,0.48,0.66,0.10,0.15,62
-4,Library Rain,Paper Lanterns,lofi,chill,0.35,72,0.60,0.58,0.86,0.90,48
-5,Gym Hero,Max Pulse,pop,intense,0.93,132,0.77,0.88,0.05,0.03,81
-6,Spacewalk Thoughts,Orbit Bloom,ambient,chill,0.28,60,0.65,0.41,0.92,0.95,40
-7,Coffee Shop Stories,Slow Stereo,jazz,relaxed,0.37,90,0.71,0.54,0.89,0.70,52
-8,Night Drive Loop,Neon Echo,synthwave,moody,0.75,110,0.49,0.73,0.22,0.60,58
-9,Focus Flow,LoRoom,lofi,focused,0.40,80,0.59,0.60,0.78,0.88,50
-10,Rooftop Lights,Indigo Parade,indie pop,happy,0.76,124,0.81,0.82,0.35,0.10,66
-11,Concrete Kingdom,Vell the Architect,hip-hop,energetic,0.78,96,0.62,0.85,0.08,0.05,72
-12,Velvet Hours,Mara Sol,soul/r&b,romantic,0.48,84,0.68,0.71,0.42,0.12,64
-13,Pulse Republic,Kilowatt,electronic,intense,0.95,128,0.72,0.91,0.03,0.55,75
-14,Grandma's Porch,The Willow Kind,folk,nostalgic,0.33,68,0.55,0.44,0.94,0.25,44
-15,Payday Strut,Brass Cartel,funk,happy,0.80,112,0.88,0.90,0.20,0.20,60
-16,Ashfall,Iron Verdict,metal,aggressive,0.97,168,0.30,0.52,0.04,0.18,57
-17,Empty Side of Bed,Noor Amara,soul/r&b,sad,0.30,66,0.22,0.48,0.66,0.08,53
-18,Island Time Delay,Reef Signal,reggae,relaxed,0.52,74,0.79,0.76,0.55,0.30,59
+1,Best Part,Daniel Caesar & H.E.R.,soul/r&b,romantic,0.33,75,0.56,0.55,0.75,0.00,78
+2,Damned,Miguel,soul/r&b,romantic,0.35,72,0.35,0.55,0.30,0.00,60
+3,Under the Influence,Snoh Aalegra,soul/r&b,romantic,0.45,90,0.50,0.60,0.25,0.00,68
+4,luther,Kendrick Lamar & SZA,soul/r&b,romantic,0.50,100,0.65,0.65,0.30,0.00,85
+5,Let Me Love You,DJ Snake & Justin Bieber,electronic,moody,0.716,100,0.163,0.65,0.086,0.00003,84
+6,September,Earth Wind & Fire,funk,happy,0.832,126,0.979,0.697,0.168,0.001,83
+7,Sunday Kind of Love,Etta James,jazz,romantic,0.30,85,0.48,0.43,0.83,0.00,70
+8,Work Song,Hozier,folk,moody,0.39,89,0.26,0.43,0.78,0.00,63
+9,Champagne Coast,Blood Orange,indie pop,nostalgic,0.45,100,0.45,0.55,0.15,0.10,45
+10,Evergreen,Omar Apollo,indie pop,nostalgic,0.34,82,0.31,0.70,0.60,0.01,60
+11,Woo,Rihanna,pop,intense,0.75,140,0.30,0.60,0.05,0.05,68
+12,Big Black Car,Gregory Alan Isakov,folk,relaxed,0.19,110,0.47,0.60,0.91,0.00,72
+13,Fourth of July,Sufjan Stevens,folk,sad,0.10,120,0.16,0.44,0.97,0.33,81
+14,I Ain't Worried,OneRepublic,pop,happy,0.797,140,0.825,0.704,0.083,0.001,96
+15,Sunflower,Swae Lee & Post Malone,pop,happy,0.55,90,0.90,0.75,0.40,0.00,90
+16,Nice For What,Drake,hip-hop,energetic,0.75,93,0.65,0.80,0.10,0.00,85
+17,In the End,Linkin Park,metal,intense,0.864,105,0.400,0.556,0.010,0.00,85
+18,Just Wanna Rock,Lil Uzi Vert,hip-hop,energetic,0.85,130,0.60,0.85,0.02,0.00,78
+19,Solitude,Jinsang,lofi,chill,0.25,75,0.40,0.50,0.60,0.90,35
+20,Three Little Birds,Bob Marley,reggae,happy,0.49,74,0.627,0.826,0.009,0.001,78
+21,Apocalypse,Cigarettes After Sex,ambient,moody,0.467,94,0.182,0.370,0.021,0.003,84
+22,Sweet Child O' Mine,Guns N' Roses,rock,happy,0.91,125,0.63,0.45,0.09,0.10,84
+23,November Rain,Guns N' Roses,rock,romantic,0.64,80,0.23,0.29,0.02,0.22,81
+24,Smells Like Teen Spirit,Nirvana,rock,aggressive,0.91,117,0.72,0.50,0.00,0.00,83
+25,Flowers,Miley Cyrus,pop,happy,0.68,118,0.65,0.70,0.10,0.00,92
+26,Anti-Hero,Taylor Swift,pop,nostalgic,0.60,97,0.50,0.65,0.10,0.00,90
+27,Espresso,Sabrina Carpenter,pop,energetic,0.75,104,0.80,0.75,0.05,0.00,88
+28,Middle,DJ Snake & Bipolar Sunshine,electronic,moody,0.695,105,0.224,0.583,0.014,0.00,76
+29,Glue,Bicep,electronic,energetic,0.798,130,0.420,0.853,0.016,0.948,74
+30,Can't Stop,Red Hot Chili Peppers,funk,energetic,0.938,91,0.875,0.618,0.018,0.00,82
+31,Under the Bridge,Red Hot Chili Peppers,funk,nostalgic,0.345,85,0.458,0.559,0.058,0.0001,82
+32,Don't Know Why,Norah Jones,jazz,relaxed,0.219,89,0.635,0.745,0.851,0.00002,76
+33,At Last,Etta James,jazz,romantic,0.348,87,0.328,0.274,0.547,0.013,75
+34,Numb,Linkin Park,metal,moody,0.863,110,0.243,0.496,0.005,0.00,83
+35,Chop Suey!,System Of A Down,metal,aggressive,0.934,127,0.287,0.417,0.0003,0.002,83
+36,It Wasn't Me,Shaggy,reggae,energetic,0.606,95,0.654,0.853,0.056,0.00,79
+37,Red Red Wine,UB40,reggae,relaxed,0.468,89,0.843,0.857,0.004,0.00001,73
+38,Experience,Ludovico Einaudi,ambient,relaxed,0.449,92,0.036,0.447,0.934,0.961,79
+39,K.,Cigarettes After Sex,ambient,sad,0.400,94,0.327,0.454,0.139,0.005,78
+40,Losing Interest,itssvd & Shiloh Dynasty,lofi,sad,0.355,112,0.506,0.753,0.480,0.020,76
+41,Hex,80purppp,lofi,chill,0.398,110,0.482,0.845,0.872,0.007,79
