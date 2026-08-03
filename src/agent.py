@@ -15,9 +15,11 @@ this module only connects two pieces that already exist.
 try:
     from src.recommender import load_songs, recommend_songs
     from src.understand import parse_request_heuristic
+    from src.logger import log_trace
 except ModuleNotFoundError:
     from recommender import load_songs, recommend_songs
     from understand import parse_request_heuristic
+    from logger import log_trace
 
 
 # ---------------------------------------------------------------------------
@@ -361,7 +363,7 @@ def run_agent(sentence: str, songs: list, k: int = 5) -> dict:
                     f"represented in library")
         # else: skipped -- final_* stay as the original results/critique.
 
-    return {
+    trace = {
         "sentence": sentence,
         "preferences": preferences,
         "matches": matches,
@@ -375,75 +377,53 @@ def run_agent(sentence: str, songs: list, k: int = 5) -> dict:
         "revision_note": revision_note,
     }
 
+    # 5. Log the full reasoning trace (console + ai_interactions.md). This never
+    #    raises -- a logging failure warns but does not break the run.
+    log_trace(trace)
+
+    return trace
+
 
 # ---------------------------------------------------------------------------
 # Manual harness -- eyeball that returned songs make sense for each request.
 # Run:  python src/agent.py   (or  python -m src.agent)
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
+    # The markdown file we echo back at the end contains unicode (em dashes,
+    # arrows); make stdout utf-8 so printing it can't crash on a cp1252 console.
+    import sys
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
     songs = load_songs("data/songs.csv")
     print(f"Loaded songs: {len(songs)}\n")
 
-    def show_brief(sentence: str, trace: dict) -> None:
-        """One-liner: final verdict + top pick (used for the passing cases)."""
-        fr, fc = trace["final_results"], trace["final_critique"]
-        top = (f"{fr[0][0]['title']} - {fr[0][0]['artist']}" if fr else "(no results)")
-        print(f"  - {sentence!r}: final={fc['verdict']} "
-              f"(conf {fc['confidence']:.2f}) | top: {top}")
+    # Same 4-5 sentences as Phase 4. run_agent() now prints the per-step console
+    # summary and appends a full markdown entry to ai_interactions.md itself.
+    samples = [
+        "I want some chill lo-fi beats to study to",   # pass, no revision
+        "hype rap for the gym",                        # pass, no revision
+        "romantic soul for a date night",              # pass, no revision
+        "slow pop",                                    # FAILS -> energy revision fires (Step 4 populated)
+        "asdkfjh qwoeiru",                             # gibberish -> revision skipped
+    ]
 
-    def show_full(sentence: str, trace: dict) -> None:
-        """Full before/after revision trace, clearly labeled."""
-        print("=" * 66)
-        print(f"SENTENCE: {sentence!r}")
-        print(f"  [1] ORIGINAL PREFS    : {trace['preferences']}")
-        oc = trace["critique"]
-        print(f"  [2] ORIGINAL CRITIQUE : {oc['verdict']} (conf {oc['confidence']:.2f}) "
-              f"-- {oc['summary']}")
-        print(f"  [3] REVISION          : {trace['revision_note']}")
-        if trace["revised_preferences"] is not None:
-            print(f"      revised prefs     : {trace['revised_preferences']}")
-            rc = trace["revised_critique"]
-            print(f"  [4] REVISED CRITIQUE  : {rc['verdict']} (conf {rc['confidence']:.2f}) "
-                  f"-- {rc['summary']}")
-        else:
-            print(f"  [4] REVISED CRITIQUE  : (no revision performed)")
-        fc = trace["final_critique"]
-        fr = trace["final_results"]
-        print(f"  [5] FINAL             : {fc['verdict']} (conf {fc['confidence']:.2f})")
-        if fr:
-            for song, score, _why in fr[:3]:
-                print(f"        - {song['title']} - {song['artist']} "
-                      f"({song['genre']} / {song['mood']}) score={score:.2f}")
-        else:
-            print("        (no results)")
+    for sentence in samples:
+        print("=" * 60)
+        print(f"RUN: {sentence!r}")
+        run_agent(sentence, songs, k=5)  # console summary + ai_interactions.md logging happen inside
+    print("=" * 60)
 
-    # --- Passing cases (brief) ------------------------------------------------
-    print("PASSING CASES (brief):")
-    for s in ["I want some chill lo-fi beats to study to",
-              "hype rap for the gym",
-              "romantic soul for a date night"]:
-        show_brief(s, run_agent(s, songs, k=5))
-    print()
-
-    # --- Phase 4 revision traces (full before/after) --------------------------
-    print("PHASE 4 REVISION TRACES:\n")
-
-    # (a) Energy revision fires; one retry still can't satisfy -> honest best-effort.
-    show_full("slow pop", run_agent("slow pop", songs, k=5))
-
-    # (d) Gibberish -> nothing parsed -> revision skipped (no retry).
-    show_full("asdkfjh qwoeiru", run_agent("asdkfjh qwoeiru", songs, k=5))
-
-    # Out-of-vocab genre: "country" is NOT in our controlled vocab, so it parses
-    # to nothing -> also a skip (there's no genre set to drop).
-    show_full("country music please", run_agent("country music please", songs, k=5))
-
-    # (b) Genre-drop demo. Every controlled genre exists in the FULL 41-song
-    # library and genre matches dominate scoring, so the genre check never fails
-    # there -- genre-drop can't fire from a plain sentence. To exercise the
-    # branch honestly, we hand run_agent a catalog with all reggae removed.
-    songs_no_reggae = [s for s in songs if s["genre"] != "reggae"]
-    print("\n(genre-drop demo: catalog with reggae removed -> "
-          f"{len(songs_no_reggae)} songs)")
-    show_full("happy reggae", run_agent("happy reggae", songs_no_reggae, k=5))
-    print("=" * 66)
+    # Requirement 6: show the first full entry from ai_interactions.md so the
+    # markdown formatting can be eyeballed.
+    log_path = "ai_interactions.md"
+    with open(log_path, encoding="utf-8") as f:
+        content = f.read()
+    marker = "\n---\n## Run —"
+    first = content.find(marker)
+    second = content.find(marker, first + 1)
+    first_entry = content if second == -1 else content[:second]
+    print("\n----- ai_interactions.md (header + first entry) -----\n")
+    print(first_entry)
