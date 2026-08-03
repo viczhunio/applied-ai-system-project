@@ -52,7 +52,7 @@ GENRE_SYNONYMS: Dict[str, List[str]] = {
     "lofi": ["lofi", "lo-fi", "lo fi", "chill beats", "chilled beats", "study beats"],
     "rock": ["rock"],
     "ambient": ["ambient", "atmospheric"],
-    "jazz": ["jazz"],
+    "jazz": ["jazz", "jazzy"],
     "indie pop": ["indie pop", "indie-pop"],          # "indie" ALONE handled separately
     "hip-hop": ["hip-hop", "hip hop", "hiphop", "rap", "trap"],
     "soul/r&b": ["soul/r&b", "r&b", "rnb", "r and b", "soul", "rhythm and blues"],

@@ -169,7 +169,12 @@ def log_trace(trace: dict, log_path: str = "ai_interactions.md") -> None:
     Appends one agent run as a structured, human-readable markdown entry
     to ai_interactions.md. Also prints a concise summary to console.
     Never raises -- logging failure should warn but not crash the agent.
+
+    log_path=None is a full no-op (no console, no file). Tests and the
+    evaluation harness use it so they don't flood the real log file.
     """
+    if log_path is None:
+        return  # no-op: suppress all logging (tests / evaluation harness)
     try:
         # 1. Console summary (short, one line per step).
         _print_console(trace)

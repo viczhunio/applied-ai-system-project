@@ -286,9 +286,14 @@ def revise_preferences(preferences: dict, critique: dict, songs: list) -> dict:
     }
 
 
-def run_agent(sentence: str, songs: list, k: int = 5) -> dict:
+def run_agent(sentence: str, songs: list, k: int = 5,
+              log_path: str = "ai_interactions.md") -> dict:
     """
     Understand -> Act -> Critique -> (one bounded) Revise pipeline.
+
+    log_path is forwarded to log_trace(); pass log_path=None to suppress all
+    logging (used by the test suite and the evaluation harness so they don't
+    write to the real ai_interactions.md).
 
     Steps:
         1. parse_request_heuristic(sentence) -> {"preferences", "matches"}
@@ -379,7 +384,7 @@ def run_agent(sentence: str, songs: list, k: int = 5) -> dict:
 
     # 5. Log the full reasoning trace (console + ai_interactions.md). This never
     #    raises -- a logging failure warns but does not break the run.
-    log_trace(trace)
+    log_trace(trace, log_path)
 
     return trace
 
