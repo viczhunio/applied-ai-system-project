@@ -214,6 +214,32 @@ def test_run_agent_gibberish_fails_and_skips_revision(songs):
     assert trace["revised_preferences"] is None  # revision skipped
 
 
+def test_run_agent_clamps_out_of_range_energy(songs, monkeypatch):
+    # Force an out-of-range energy (2.0) into the pipeline by faking the parser.
+    # The agent's defensive clamp should bound it to <= 1.0 so no result ends up
+    # with a negative score (unclamped, energy 2.0 vs a 0.0-energy song yields a
+    # -1.5 energy term that can drive the total below zero).
+    import src.agent as agent_mod
+
+    def fake_parse(sentence):
+        return {
+            "preferences": {"genre": "pop", "mood": "happy", "energy": 2.0},
+            "matches": {
+                "genre": {"value": "pop", "matched_on": []},
+                "mood": {"value": "happy", "matched_on": []},
+                "energy": {"value": 2.0, "matched_on": []},
+                "acousticness": {"value": None, "matched_on": []},
+            },
+        }
+
+    monkeypatch.setattr(agent_mod, "parse_request_heuristic", fake_parse)
+    trace = agent_mod.run_agent("out of range energy", songs, log_path=None)
+
+    assert trace["preferences"]["energy"] <= 1.0            # clamp applied
+    for _song, score, _why in trace["results"]:             # no negative scores
+        assert score >= 0.0
+
+
 def test_run_agent_trace_shape(songs):
     trace = run_agent("anything at all", songs, log_path=None)
     expected_keys = {

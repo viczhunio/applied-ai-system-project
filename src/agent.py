@@ -405,29 +405,94 @@ if __name__ == "__main__":
     # The markdown file we echo back at the end contains unicode (em dashes,
     # arrows); make stdout utf-8 so printing it can't crash on a cp1252 console.
     import sys
+    import io
+    import contextlib
     try:
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
 
     songs = load_songs("data/songs.csv")
-    print(f"Loaded songs: {len(songs)}\n")
 
-    # Same 4-5 sentences as Phase 4. run_agent() now prints the per-step console
-    # summary and appends a full markdown entry to ai_interactions.md itself.
+    # ASCII box banner (= | instead of unicode box-drawing, for cp1252 safety).
+    _W = 64
+    print("=" * _W)
+    print("|" + "🎵 AmbiVibe — Agentic Music Recommender".center(_W - 2) + "|")
+    print("|" + "LIVE DEMO".center(_W - 2) + "|")
+    print("=" * _W)
+    _genres = len(set(s["genre"] for s in songs))
+    _moods = len(set(s["mood"] for s in songs))
+    print(f"Loaded songs: {len(songs)} | Genres: {_genres} | Moods: {_moods}")
+    print()
+
+    # Same 4-5 sentences as Phase 4.
     samples = [
         "I want some chill lo-fi beats to study to",   # pass, no revision
         "hype rap for the gym",                        # pass, no revision
         "romantic soul for a date night",              # pass, no revision
-        "slow pop",                                    # FAILS -> energy revision fires (Step 4 populated)
+        "slow pop",                                    # FAILS -> energy revision fires
         "asdkfjh qwoeiru",                             # gibberish -> revision skipped
     ]
 
-    for sentence in samples:
-        print("=" * 60)
-        print(f"RUN: {sentence!r}")
-        run_agent(sentence, songs, k=5)  # console summary + ai_interactions.md logging happen inside
-    print("=" * 60)
+    def _print_demo_block(index, total, sentence, trace):
+        """Render one demo run in the LIVE DEMO format from its trace."""
+        prefs = trace["preferences"]
+        results = trace["results"]
+        critique = trace["critique"]
+        final_results = trace["final_results"]
+        final_critique = trace["final_critique"]
+
+        head = f"-- Demo Run {index}/{total} "
+        print(head + "-" * (_W - len(head)))
+        print(f'Request: "{sentence}"')
+
+        # [UNDERSTAND]
+        parts = [f"genre={prefs.get('genre')}", f"mood={prefs.get('mood')}"]
+        if "energy" in prefs:
+            parts.append(f"energy={prefs['energy']}")
+        if "acousticness" in prefs:
+            parts.append(f"acousticness={prefs['acousticness']}")
+        print(f"[UNDERSTAND] {'  '.join(parts)}")
+
+        # [ACT] (original act output)
+        if results:
+            song, score, _why = results[0]
+            print(f"[ACT]        top: {song['title']} — {song['artist']} (score {score:.2f})")
+        else:
+            print("[ACT]        top: (no results)")
+
+        # [CRITIQUE] (original critique)
+        print(f"[CRITIQUE]   {critique['verdict']} (confidence {critique['confidence']:.2f})")
+
+        # [REVISE]
+        if trace["revised_preferences"] is None:
+            print("[REVISE]     skipped")
+        else:
+            print(f"[REVISE]     {trace['revision_note']}")
+
+        # [FINAL] (what gets served)
+        mark = "✓" if final_critique["verdict"] == "pass" else "✗"
+        if final_results:
+            song = final_results[0][0]
+            print(f"[FINAL]      {mark} {final_critique['verdict']} — "
+                  f"{song['title']} by {song['artist']}")
+        else:
+            print(f"[FINAL]      {mark} {final_critique['verdict']} — (no results)")
+
+        print("-" * _W)
+        print()
+
+    for i, sentence in enumerate(samples, start=1):
+        # log_path=None suppresses log_trace entirely (no file write, no console
+        # echo), so demo launches don't append to ai_interactions.md. The
+        # redirect_stdout is a belt-and-suspenders guard against any stray output.
+        with contextlib.redirect_stdout(io.StringIO()):
+            trace = run_agent(sentence, songs, k=5, log_path=None)
+        _print_demo_block(i, len(samples), sentence, trace)
+
+    print("=" * _W)
+    print("  Demo complete. Now try it yourself:")
+    print("=" * _W)
 
     # ------------------------------------------------------------------
     # Interactive CLI (runs AFTER the reproducible harness demo above).

@@ -1,236 +1,147 @@
-# 🎧 Model Card: Music Recommender Simulation
+# 🎧 Model Card: AmbiVibe — Agentic Music Recommender
 
-## 1. Model Name  
+## 1. Model Name
 
-**AmbiVibe**  
-
----
-
-## 2. Intended Use  
-
-The app is intended to generate a list of similar tracks based on a user's profile. It assumes the style of music the user wants to hear. The app is for classroom exploration, using a mock dataset. 
+**AmbiVibe** — Agentic Music Recommender System
+*Project 4 extension of the Module 3 Music Recommender Simulation*
 
 ---
 
-## 3. How the Model Works  
+## 2. Intended Use
 
-The app gives every song a score for one listener. Then it returns the songs with the highest scores. To determine the score, it looks at the song's genre, mood, and energy. It also checks smaller details like tempo, danceability, and popularity. The listener gives a taste profile with their favorite genre, mood, and energy. The score is a points system, with genre match as the most points. The starter version only used genre, mood, and energy in a simple way. I added more song details, and gave genre and mood clear point values. I made energy its own strong factor. I also made the app explain the points behind each pick. 
-
----
-
-## 4. Data  
-
-The catalog is a small mock dataset. It has 18 songs, and 14 genres. These include pop, lofi, rock, jazz, hip-hop, soul/r&b, metal, and more. They also cover 11 moods, like happy, chill, intense, sad, and focused. Each song has a genre, a mood, and several number traits. Those traits are energy, tempo, valence, danceability, acousticness, instrumentalness, and popularity. I added two columns to the starter data: instrumentalness and popularity. This gave the model more detail to score on. The dataset is small so it leaves a lot of music out. Most genres have only one song. There is no classical, country, or much world music. The data also has no lyrics and no listening history.           
+AmbiVibe is designed to accept a plain-English listener request ("I want something chill and acoustic for studying") and return a ranked list of song recommendations with a confidence score and honest verdict about whether the results actually matched what was asked. It is intended for classroom exploration and portfolio demonstration. The catalog is a curated 41-song dataset; this is not a production music service.
 
 ---
 
-## 5. Strengths  
+## 3. How the System Works
 
-The system works best for listeners with a clear, consistent taste. When someone's genre, mood, and energy all point the same way, the top pick is spot on. It also gives different results to different people. The three test listeners each got a different #1 song. The app does not just hand everyone the same popular track. The app also explains its decisions, every pick shows the points behind it. This makes the recommendations easy to trust and check.
+The system runs a four-step agentic loop around the original Module 3 content-based scoring engine, which is left completely unmodified:
+
+1. **Understand** — `parse_request_heuristic()` in `src/understand.py` scans the sentence for genre words, mood words, and intensity cues using a keyword/synonym lookup table. No API calls, no ML model — pure pattern matching. It returns a sparse preferences dict (fields absent when no cue found) plus a keyword trace for logging.
+
+2. **Act** — the unchanged `recommend_songs()` from Module 3 scores all 41 songs using: genre match (+2.0), mood match (+1.0), energy similarity (×1.5), and averaged numeric features (×0.5). Returns top-k with scores and explanations.
+
+3. **Critique** — `critique_results()` in `src/agent.py` checks whether each set preference was actually satisfied in the results. Builds a confidence score (satisfied ÷ set preferences). Verdict is `pass` if confidence ≥ 0.6, `fail` otherwise.
+
+4. **Revise** — if critique fails, `revise_preferences()` attempts one bounded fix in priority order: relax energy toward center, drop genre, drop mood, or skip if nothing was parsed. Re-runs the recommender and re-critiques. Never loops. Reports honestly if the retry still fails.
+
+Every run is logged to `ai_interactions.md` as a full step-by-step markdown trace.
 
 ---
 
-## 6. Limitations and Bias 
+## 4. Data
 
-The biggest weakness I discovered during testing is a genre filter bubble created by the heavy `+2.0` genre weight. A genre match is worth more than a perfect energy match (1.5) and far more than any single other feature(~0.08). Because of that, same-genre songs almost always fill the top of the list. With the Lofi profile the top three results were all lofi, and the mood-removal experiment confirmed that genre and energy alone decide the #1 pick. This means a listener is rarely shown a great song from an adjacent genre, so the system reinforces existing taste instead of encouraging discovery. The problem is compounded by exact-string genre matching: `"indie pop"` does not match `"pop"`. Closely related subgenres are penalized as if they were completely different. With 14 genres spread across only 18 songs, most genres have a single track, so once the genre filter narrows the field there is almost no variety left to rank.
+The catalog is `data/songs.csv` — 41 songs, 13 genres, 10 moods.
+
+**Audio feature sourcing:**
+- **14 songs** have real, measured audio-feature values sourced from a pre-2024 Kaggle dataset snapshot that captured Spotify's audio-features API before it was deprecated in November 2024 (energy, valence, danceability, acousticness, instrumentalness, tempo, popularity all real). These include: Sunday Kind of Love, Work Song, Evergreen, Big Black Car, Fourth of July, Sweet Child O' Mine, November Rain, Smells Like Teen Spirit, September, Can't Stop, Under the Bridge, Don't Know Why, At Last, and Three Little Birds.
+- **27 songs** use AI-estimated values based on each track's known genre, production style, tempo, and general sound character. These are reasonable approximations, not measured data. This is documented as a known limitation.
+
+**Why estimated values exist:** Spotify's audio-features endpoint (energy, valence, danceability, etc.) was deprecated for new applications in November 2024 with no official replacement. Building this project in 2025-2026 means real per-track audio-feature data is no longer publicly accessible for a new application.
+
+**Genre and mood labels:** All genre and mood values were assigned by the developer based on each song's known style. One data-quality issue was caught during development: a Kaggle dataset labeled several Latin pop songs (Bad Bunny, Manuel Turizo) under the `reggae` genre tag. These were rejected and replaced with genuinely reggae-tagged tracks (Bob Marley, UB40, Shaggy) after manual review — a concrete example of why retrieved data should be validated rather than trusted blindly.
 
 ---
 
-## 7. Evaluation  
+## 5. Limitations and Biases
 
-### Comparing the three profiles (pairwise)
+**Genre filter bubble (inherited from Module 3, unchanged):**
+The +2.0 genre bonus dominates scoring. A song matching the listener's genre but mismatching mood and energy will almost always outrank a song from an adjacent genre that's a better overall fit. A listener asking for "chill indie pop" will rarely see a great chill folk or ambient song even if it's a closer match on every numeric feature. This is a documented design trade-off, not a bug — but it's a real limitation for discovery.
 
-I ran three everyday listeners — **deep-focus lofi**, **upbeat pop**, and
-**intense rock** — and compared how their top-5 lists differ. Comparing them in
-pairs shows the preferences are actually testing for different things.
+**Exact-string genre matching:**
+`"indie pop"` does not match `"pop"`. Closely related subgenres are treated as completely different categories. This penalizes cross-genre similarity in a way that doesn't reflect how real listeners experience genre boundaries.
 
-- **Lofi vs. Pop:** These two lists share *no* songs. The lofi listener gets
-  quiet, mellow background music, while the pop listener gets bright, upbeat tracks. This makes sense because they ask for opposite energy levels (0.40 vs.
-  0.80) and different genres.
+**Heuristic parser brittleness:**
+`parse_request_heuristic()` is substring pattern matching, not language understanding. It can only recognize phrasing someone explicitly coded into the keyword table. "Something with a late-night feel" returns no genre or mood. "Vibes for a road trip" returns nothing useful. Any synonym or phrase not in the lookup table is invisible to the parser. This is the core reason a Gemini-powered understand step (Phase 9, optional) would improve the system — not because it's smarter about music, but because it actually reads for meaning rather than matching substrings.
 
-- **Lofi vs. Rock:** The most opposite pair with no overlap. Lofi is
-  calm and slow; rock is loud, fast, and aggressive. The huge energy gap (0.40 vs. 0.90) pushes each listener to the opposite end of the catalog, which is exactly what we'd expect.
+**Three greedy-matching bugs found and fixed during development:**
+During Phase 1 testing, three overly broad keyword rules were identified and corrected:
+- `"house"` matched `"electronic"` on bare word — fired on "at my house tonight." Fixed to require "house music."
+- `"down"` matched `"sad"` on bare word — fired on "calm down," overriding the "calm → relaxed" match because it appeared later in the sentence. Fixed to require specific phrases like "feeling down."
+- `"heavy"` matched `"aggressive"` on bare word — fired on "feeling heavy after a long day." Fixed to require "heavy metal" or "heavy bass."
 
-- **Pop vs. Rock:** Unlike the other pairs, these two overlap and both lists include Gym Hero and Sunrise City. That happens because both listeners want high energy. Energetic songs bubble up for each of them even if the genres differ.  
+These are documented as regression tests in `tests/test_agent.py` and will permanently flag if the behavior regresses.
 
-**Why does "Gym Hero" keep showing up for a "Happy Pop" fan?** 
-Gym Hero is a pop song that is *very* high-energy, but it's tagged with the mood
-"intense" rather than "happy." When someone asks for happy pop, the system gives
-Gym Hero a big bonus just for being *pop*, and another big reward for being
-*high-energy* (which happy pop usually is). Those two rewards are so large that
-the mismatched "intense" mood isn't enough to keep it out of the top list. So a
-happy-pop fan keeps seeing an intense workout track — a good, concrete example
-of the genre-and-energy weighting overpowering mood.
+**Thin genre coverage:**
+With 41 songs across 13 genres (~3 per genre), some genre requests return little variety. A listener asking for jazz will see at most 3 songs, and the ranking differences between them are small. This limits the practical value of the recommender for less-common genres.
 
-### Adversarial / edge-case profiles
+**No personalization or listening history:**
+The system knows only what the listener types in a single sentence. It has no memory across sessions, no listening history, no implicit feedback, no collaborative filtering. Two listeners typing the same sentence get identical results.
 
-Beyond the three "normal" profiles (deep-focus lofi, upbeat pop, intense rock),
-I stress-tested the scoring logic with **adversarial / edge-case profiles**
-designed to try to trick it. Each was run through the recommender and the top 5
-results observed in the terminal.
+**Instrumentalness is misnamed:**
+The `instrumentalness` feature measures the probability a track has *no vocals* (closer to 1.0 = likely purely instrumental). It does not measure production quality or instrumental richness. This is a known Spotify API naming quirk documented in the project for anyone reading the CSV.
 
-### Adversarial Profile 1 — Conflicting Signals (sad + high energy)
+---
 
-A `soul/r&b`, `sad` listener who also asks for `energy = 0.9`. Sad songs are
-almost always low-energy, so this pits the categorical bonuses against a
-mismatched energy target.
+## 6. Could This System Be Misused?
 
+The system recommends songs from a fixed catalog — the misuse risk is low. A few honest notes:
+
+- **Homogenization:** A production version of this system (if deployed at scale with a large catalog) could reinforce genre filter bubbles — showing listeners only what they already like rather than encouraging discovery. The +2.0 genre weight is the primary driver of this risk.
+- **Data quality:** If the catalog were expanded without careful curation, mislabeled genre/mood values (like the reggae misclassification caught during development) could surface wrong results without any visible error.
+- **Parser over-triggering:** In theory, a cleverly worded sentence could trigger multiple genre or mood keywords and produce a confusing result. The last-mention-wins contradiction rule is documented but not always intuitive.
+
+None of these risks are severe for a classroom project. In a production context, human review of catalog data and confidence thresholds would be important guardrails.
+
+---
+
+## 7. Evaluation and Testing
+
+### Automated tests
+35 pytest tests across two files. 33 in `tests/test_agent.py` (new), 2 in `tests/test_recommender.py` (original, untouched).
+
+### Evaluation harness
 ```
-TOP RECOMMENDATIONS - CONFLICTING SIGNALS (sad + high energy)
-Profile: soul/r&b / sad  |  target energy 0.90
-==============================================
-
-#1                                Score: 3.60
-    Song:   Empty Side of Bed
-    Artist: Noor Amara
-    Genre:  soul/r&b
-    Mood:   sad
-
-    Why:
-      - genre match: soul/r&b (+2.0)
-      - mood match: sad (+1.0)
-----------------------------------------------
-#2                                Score: 2.87
-    Song:   Velvet Hours
-    Artist: Mara Sol
-    Genre:  soul/r&b
-    Mood:   romantic
-
-    Why:
-      - genre match: soul/r&b (+2.0)
-----------------------------------------------
-#3                                Score: 1.48
-    Song:   Storm Runner
-    Artist: Voltline
-    Genre:  rock
-    Mood:   intense
-
-    Why:
-      - energy match (+1.48)
-----------------------------------------------
+python scripts/evaluate.py
+```
+14 predefined cases. Results:
+```
+PASSED: 14/14   ACCURACY: 100.0%
+Average agent confidence: 0.75 | Revision fired: 1/14 | Revision helped: 0/1
 ```
 
-**Observation:** "Empty Side of Bed" wins even though its energy (0.30) is the
-opposite of the requested 0.90 — the genre + mood bonus (+3.0) overwhelms the
-energy mismatch, and the energy reason doesn't even appear (it fell below the
-0.75 closeness bar). The system trusts the *labels* over the conflicting
-*number*. Arguably correct (a sad-soul fan probably does want this song), but it
-shows energy can be completely ignored when the categorical match is strong.
+### What worked
+- Genre, mood, and energy detection works reliably for direct, unambiguous sentences.
+- The critique step correctly identifies when results don't match the request.
+- The revision step correctly skips when there's nothing actionable (gibberish, out-of-vocab genre).
+- Graceful degradation: a genre not in the vocabulary causes the system to fall back to mood/energy ranking without crashing.
 
-### Adversarial Profile 2 — Ghost Genre (a genre not in the catalog)
+### What didn't work / honest gaps
+- "Slow pop" fails even after revision — the library genuinely lacks low-energy pop songs. The system reports this honestly rather than pretending to succeed.
+- Revision helped 0 out of 1 times it fired across 14 test cases. This reflects reality: when a genre exists in the catalog but energy is mismatched, relaxing energy by 30% is often not enough to change the verdict.
+- Ambiguous or creative phrasing ("late-night vibes," "road trip energy") produces no preferences — the heuristic parser simply has no rules for these.
 
-Genre `polka`, which no song has, plus `happy` / `energy 0.5`.
-
-```
-TOP RECOMMENDATIONS - GHOST GENRE (polka not in catalog)
-Profile: polka / happy  |  target energy 0.50
-==============================================
-
-#1                                Score: 2.11
-    Song:   Rooftop Lights
-    Artist: Indigo Parade
-    Genre:  indie pop
-    Mood:   happy
-
-    Why:
-      - mood match: happy (+1.0)
-----------------------------------------------
-#2                                Score: 2.05
-    Song:   Payday Strut
-    Artist: Brass Cartel
-    Genre:  funk
-    Mood:   happy
-
-    Why:
-      - mood match: happy (+1.0)
-----------------------------------------------
-#3                                Score: 2.02
-    Song:   Sunrise City
-    Artist: Neon Echo
-    Genre:  pop
-    Mood:   happy
-
-    Why:
-      - mood match: happy (+1.0)
-----------------------------------------------
-```
-
-**Observation:** The system degrades gracefully. With the +2.0 genre bonus
-unreachable, it simply falls back to ranking on mood and energy, surfacing happy
-songs. No crash, no empty result — a good sign for robustness.
-
-### Adversarial Profile 3 — Out-of-Range Energy (energy = 2.0)
-
-An invalid `energy = 2.0` (the valid range is 0–1), with `pop` / `happy`.
-
-```
-TOP RECOMMENDATIONS - OUT-OF-RANGE ENERGY (energy = 2.0)
-Profile: pop / happy  |  target energy 2.00
-==============================================
-
-#1                                Score: 2.73
-    Song:   Sunrise City
-    Artist: Neon Echo
-    Genre:  pop
-    Mood:   happy
-
-    Why:
-      - genre match: pop (+2.0)
-      - mood match: happy (+1.0)
-----------------------------------------------
-#4                                Score: 0.64
-    Song:   Rooftop Lights
-    Artist: Indigo Parade
-    Genre:  indie pop
-    Mood:   happy
-
-    Why:
-      - mood match: happy (+1.0)
-----------------------------------------------
-#5                                Score: -0.05
-    Song:   Ashfall
-    Artist: Iron Verdict
-    Genre:  metal
-    Mood:   aggressive
-
-    Why:
-      - general similarity to your taste
-----------------------------------------------
-```
-
-**Observation — the most surprising result:** the last song scored a **negative
-number** (-0.05). Because energy is compared raw and *not clamped*, an
-out-of-range target makes `1 − |2.0 − song_energy|` go negative, which the ×1.5
-weight then multiplies into a negative contribution. The scoring never validates
-that inputs are in range. This is a real edge-case bug: the system should either
-clamp energy to [0, 1] or reject invalid profiles.
-
-### What I looked for and what surprised me             
-                     
-- I was looking to see if strong categorical matches could hide a huge numeric mismatch, this is seen in Profile 1. I also wanted to see if an unmatchable genre would break it, which in Profile 2 is seen to just degrade smoothly. I also looked to see if bad input is handled, Profile 3 shows that a negative score is produced. The most suprising for me was the negative score is possible with out of range input. 
-
-### Sensitivity Test — removing the mood feature
-
-As a second evaluation, I measured how much one feature matters by temporarily
-disabling the mood bonus and comparing rankings.
-
-- **Result:** the top recommendation for each profile stayed the same, because
-  genre and energy carry most of the weight. However, lower-ranked positions
-  reshuffled — songs that no longer earned mood points were overtaken by
-  mood-mismatched songs (e.g., for the intense-rock listener, the *aggressive*
-  track "Ashfall" rose from #4 to #2 above genuinely *intense* tracks). What this shows is that mood has little effect on the single best pick but a
-  real effect on the ordering of the rest of the list. It acts as a tiebreaker
-  rather than a primary signal. The system leans heavily on genre and can
-  under-weight mood and energy when ranking the top result.
+### What surprised me during testing
+The most surprising finding was how fast the three greedy-matching bugs emerged from a small set of natural test sentences. "I want to relax and calm down" and "just chilling at my house" are completely ordinary things a person would type, but they triggered wrong genre and mood classifications because the parser matched substrings without context. This showed the core limitation of heuristic parsing: the system isn't reading your sentence, it's scanning it for specific strings. Any word that appears in both a music context and an everyday context is a potential false positive.
 
 ---
 
-## 8. Future Work  
+## 8. AI Collaboration Reflection
 
-I would like to fix the out of range energy, so a good fix would be to reject bad profiles or validate ranges. I would also like to improve genre matching, making it so that "Indie pop" would slightly match with "pop." Related genres could have more of a match. I would also be interested in adding an aspect where the user can pick more than one favorite genre or mood. They could choose what matters most to them.           
-                
+### How I used AI during this project
+
+I used Claude as a collaborator throughout the development of this project as a planning and code-review partner. The workflow was that I described what I wanted to build, Claude produced a structured plan and then detailed prompts, I sent those prompts to Claude Code (a separate agentic coding tool), Claude Code produced the implementation, and I reviewed the output and brought observations back to Claude for the next step.
+
+Specific uses: planning the 9-phase build sequence, designing the `parse_request_heuristic()` output schema, writing the Phase 3-4 agent prompts, building the full songs.csv dataset, including looking up real audio-feature values from a Kaggle dataset and estimating values for songs not found.
+
+### One instance where the AI suggestion was helpful
+
+When building the song dataset, I asked about using the Spotify API to get real audio-feature values. Claude searched for current information and found that Spotify had deprecated its audio-features, recommendations, and audio-analysis endpoints in November 2024 which is something I didn't know. This was a genuine, time-saving catch: if I'd tried to build an API integration and only discovered the deprecation after setting up authentication, I would have lost significant time. The suggestion to use a pre-2024 Kaggle dataset snapshot instead was practical and directly applicable.
+
+### One instance where the AI suggestion was flawed
+
+During the dataset-building phase, Claude suggested using "La Bachata" by Manuel Turizo as a reggae song because the Kaggle dataset tagged it under the `reggae` genre. This was factually wrong, "La Bachata" is bachata, a Dominican genre with no connection to reggae. The Kaggle dataset's genre labels were apparently bucketing several Latin genres together under "reggae" based on superficial tempo or rhythm characteristics. I caught this because I knew the song and recognized the mismatch. This was a good reminder that retrieved data should be validated by someone with domain knowledge, not trusted because it came from a structured dataset. The fix was to manually search for actually-reggae artists (Bob Marley, UB40, Shaggy) and use their tracks instead.
+
+### System limitations going forward
+
+The biggest limitation is the heuristic parser's brittleness on natural, creative language — anything outside the keyword table is invisible. A production version of this system would need either a much larger synonym table (brittle, hard to maintain) or an LLM-powered understand step (reliable, but API-dependent). The optional Phase 9 Gemini integration was designed with this gap in mind: replace only the understand step, leave everything else unchanged, fall back to heuristic mode if the API is unavailable.
+
 ---
 
-## 9. Personal Reflection  
+## 9. Future Work
 
-I learned that recommender systems are really all about scoring. They go through patterns and match what a user would like. The most surprising thing for me was how much one weight can take over. My genre bonus was very strong and created a filter bubble. Songs from other genres rarely broke through. This changed how I think about music apps because when an apps keeps showing me the same kind of song, that is intentional. These apps learn from your tastes and favorites, to bring reccomendations you would like. 
+- **Clamp energy input** fixed in Project 4: run_agent() now clamps energy to [0, 1] before passing to recommend_songs(), closing the negative-score bug identified during Module 3 adversarial testing
+- **Soften genre matching** — allow partial credit for related genres (e.g. "indie pop" gets 50% of the genre bonus when the request is "pop") to reduce the filter bubble effect.
+- **Expand the synonym table** — common phrases like "road trip," "late night," "workout," "morning coffee" could map to mood/energy presets, making the parser useful for more natural requests without requiring an LLM.
+- **Gemini-powered understand step (Phase 9)** — swap in Gemini for `parse_request_heuristic()` with automatic fallback to heuristic mode when the API key is absent or the response is malformed. This would handle creative/ambiguous phrasing without changing anything else in the pipeline.
+- **Multi-turn memory** — let the listener refine their request ("more upbeat," "not that one") rather than starting fresh each time.
