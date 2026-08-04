@@ -330,6 +330,14 @@ def run_agent(sentence: str, songs: list, k: int = 5,
     preferences = parsed["preferences"]
     matches = parsed["matches"]
 
+    # Defensive clamp (Module 3 out-of-range energy bug): parse_request_heuristic
+    # should only ever emit energy in [0.0, 1.0], but recommend_songs()/score_song()
+    # compare energy RAW and do not validate its range, so a stray out-of-range
+    # value would distort scoring (and can push scores negative). We clamp here in
+    # the agent layer rather than modifying the frozen recommender.
+    if "energy" in preferences:
+        preferences["energy"] = max(0.0, min(1.0, preferences["energy"]))
+
     # 2. Act.
     results = recommend_songs(preferences, songs, k)
 
@@ -421,14 +429,38 @@ if __name__ == "__main__":
         run_agent(sentence, songs, k=5)  # console summary + ai_interactions.md logging happen inside
     print("=" * 60)
 
-    # Requirement 6: show the first full entry from ai_interactions.md so the
-    # markdown formatting can be eyeballed.
-    log_path = "ai_interactions.md"
-    with open(log_path, encoding="utf-8") as f:
-        content = f.read()
-    marker = "\n---\n## Run —"
-    first = content.find(marker)
-    second = content.find(marker, first + 1)
-    first_entry = content if second == -1 else content[:second]
-    print("\n----- ai_interactions.md (header + first entry) -----\n")
-    print(first_entry)
+    # ------------------------------------------------------------------
+    # Interactive CLI (runs AFTER the reproducible harness demo above).
+    # Logging is suppressed (log_path=None) so live sessions don't flood
+    # the ai_interactions.md deliverable.
+    # ------------------------------------------------------------------
+    print("\n" + "=" * 48)
+    print("🎵 AmbiVibe — Ask for music in plain English")
+    print('Type a request like: "chill lofi to study to"')
+    print("Type 'quit' or press Ctrl+C to exit.")
+    print("=" * 48)
+
+    try:
+        while True:
+            sentence = input("You: ").strip()
+            if sentence.lower() in ("quit", "exit"):
+                print("Goodbye! 🎵")
+                break
+            if not sentence:
+                continue
+
+            trace = run_agent(sentence, songs, k=5, log_path=None)
+            final_results = trace["final_results"]
+            final_critique = trace["final_critique"]
+
+            print("\nTop picks:")
+            if final_results:
+                for rank, (song, score, _why) in enumerate(final_results[:3], start=1):
+                    print(f"  {rank}. {song['title']} — {song['artist']} "
+                          f"({song['genre']}/{song['mood']}) | score: {score:.2f}")
+            else:
+                print("  (no results)")
+            print(f"Verdict: {final_critique['verdict']} "
+                  f"(confidence {final_critique['confidence']:.2f})\n")
+    except KeyboardInterrupt:
+        print("\nGoodbye! 🎵")
